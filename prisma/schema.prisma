@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+}
+
+model Company {
+  id            String       @id @default(cuid())
+  name          String
+  contactPerson String?
+  email         String?
+  phone         String?
+  address       String?
+  website       String?
+  notes         String?
+  services      String?
+  monthlyAmount Float        @default(0)
+  status        String       @default("active")
+  payments      Payment[]
+  quotations    Quotation[]
+  invoices      Invoice[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Payment {
+  id              String     @id @default(cuid())
+  companyId       String
+  company         Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  amount          Float
+  amountPaid      Float      @default(0)
+  currency        String     @default("LKR")
+  fxRate          Float      @default(1)
+  dueDate         DateTime
+  datePaid        DateTime?
+  invoiceNumber   String?
+  service         String?
+  method          String?
+  status          String     @default("pending")
+  notes           String?
+  recurring       Boolean    @default(false)
+  recurrenceCycle String?
+  parentPaymentId String?    @unique
+  parent          Payment?   @relation("PaymentSeries", fields: [parentPaymentId], references: [id], onDelete: SetNull)
+  child           Payment?   @relation("PaymentSeries")
+  reminders       Reminder[]
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([companyId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model Subscription {
+  id            String     @id @default(cuid())
+  provider      String
+  cost          Float      @default(0)
+  currency      String     @default("LKR")
+  purchaseDate  DateTime?
+  expiryDate    DateTime
+  renewalCycle  String     @default("monthly")
+  reminderDays  Int        @default(7)
+  autoRenew     Boolean    @default(false)
+  status        String     @default("active")
+  fxRate        Float      @default(1)
+  email         String?
+  notes         String?
+  reminders     Reminder[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([status])
+  @@index([expiryDate])
+}
+
+model Reminder {
+  id             String        @id @default(cuid())
+  type           String
+  dayKey         String
+  paymentId      String?
+  payment        Payment?      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  email          String?
+  status         String
+  detail         String?
+  sentAt         DateTime      @default(now())
+
+  @@unique([type, dayKey, paymentId])
+  @@unique([type, dayKey, subscriptionId])
+  @@index([sentAt])
+}
+
+model Quotation {
+  id              String          @id @default(cuid())
+  number          String          @unique
+  date            DateTime        @default(now())
+  validUntil      DateTime?
+  companyId       String?
+  company         Company?        @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  customerName    String
+  customerEmail   String?
+  customerAddress String?
+  notes           String?
+  currency        String          @default("LKR")
+  fxRate          Float           @default(1)
+  discountPercent Float           @default(0)
+  taxPercent      Float           @default(0)
+  status          String          @default("draft")
+  isTemplate      Boolean         @default(false)
+  templateName    String?
+  items           QuotationItem[]
+  invoice         Invoice?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([status])
+  @@index([date])
+  @@index([isTemplate])
+}
+
+model QuotationItem {
+  id          String    @id @default(cuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Float     @default(1)
+  unitPrice   Float     @default(0)
+  position    Int       @default(0)
+
+  @@index([quotationId])
+}
+
+model Invoice {
+  id              String        @id @default(cuid())
+  number          String        @unique
+  date            DateTime      @default(now())
+  dueDate         DateTime
+  companyId       String?
+  company         Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  customerName    String
+  customerEmail   String?
+  customerAddress String?
+  notes           String?
+  currency        String        @default("LKR")
+  fxRate          Float         @default(1)
+  discountPercent Float         @default(0)
+  taxPercent      Float         @default(0)
+  amountPaid      Float         @default(0)
+  status          String        @default("pending")
+  quotationId     String?       @unique
+  quotation       Quotation?    @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  items           InvoiceItem[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status])
+  @@index([dueDate])
+  @@index([companyId])
+}
+
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Float   @default(1)
+  unitPrice   Float   @default(0)
+  position    Int     @default(0)
+
+  @@index([invoiceId])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  date        DateTime @default(now())
+  category    String
+  amount      Float
+  currency    String   @default("LKR")
+  fxRate      Float    @default(1)
+  description String?
+  vendor      String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+  @@index([category])
+}
+
+model Contract {
+  id          String    @id @default(cuid())
+  name        String
+  partyName   String?
+  startDate   DateTime?
+  expiryDate  DateTime?
+  renewalDate DateTime?
+  fileUrl     String?
+  notes       String?
+  status      String    @default("active")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([expiryDate])
+  @@index([status])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  priority    String    @default("medium")
+  status      String    @default("pending")
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+  @@index([dueDate])
+  @@index([priority])
+}
+
+model Settings {
+  id                          String   @id @default("singleton")
+  businessName                String   @default("BusinessOS")
+  businessEmail               String?
+  businessPhone               String?
+  businessAddress             String?
+  defaultCurrency             String   @default("LKR")
+  taxPercent                  Float   @default(0)
+  emailServiceId              String?
+  emailPaymentTemplateId      String?
+  emailSubscriptionTemplateId String?
+  emailPublicKey              String?
+  emailPrivateKey             String?
+  updatedAt                   DateTime @updatedAt @default(now())
+}

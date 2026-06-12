@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const sharp=require\\('sharp'\\);\")",
+      "Bash(powershell.exe -NoProfile -Command \"Start-Process 'd:/BOMS/preview-invoice.pdf'\")",
+      "Bash(npm run *)",
+      "Bash(npm start *)",
+      "Bash(tasklist)",
+      "Bash(node_modules/.bin/prisma generate *)",
+      "PowerShell(Get-Process | Where-Object { $_.ProcessName -match 'node|electron|tsx|conhost' } | Select-Object Id, ProcessName, Path | Format-Table -AutoSize)",
+      "Bash(echo \"EXIT=$?\")"
+    ]
+  }
+}
